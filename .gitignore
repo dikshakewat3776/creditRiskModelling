@@ -144,7 +144,7 @@ GitHub.sublime-settings
 .history
 /core/migrations/
 /preEligibility/migrations/
-/datasets/
+/creditRiskModelling/datasets/
 /creditRiskModelling/creditRiskModels/hlcrm_ada_boost.sav
 /creditRiskModelling/creditRiskModels/hlcrm_lgbm.sav
 /creditRiskModelling/creditRiskModels/hlcrm_random_forest.sav

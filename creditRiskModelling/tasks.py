@@ -1,6 +1,5 @@
 from celery.exceptions import CeleryError
 from creditRiskModelling.celery import app
-
 import os
 from django.conf import settings
 import numpy as np
@@ -20,11 +19,13 @@ from imblearn.under_sampling import RandomUnderSampler
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score, confusion_matrix
-
+import pickle
 
 # for ignoring warnings
 import warnings
 warnings.filterwarnings("ignore")
+
+
 
 
 @app.task(bind=True)
@@ -38,11 +39,9 @@ def home_loan_credit_model(self):
 
         # training dataset
         train_df = pd.read_csv(f"{dirname}/application_train.csv", index_col='SK_ID_CURR')
-        # print(test_df.head())
 
         # testing dataset
         test_df = pd.read_csv(f"{dirname}/application_test.csv", index_col='SK_ID_CURR')
-        # print(test_df.head())
 
         # datasets sizes
         print(f'Training dataset contains {train_df.shape[0]} records and {train_df.shape[1]} columns.')
@@ -55,9 +54,7 @@ def home_loan_credit_model(self):
         train_copy = train_df.copy()
         test_copy = test_df.copy()
 
-        # Drop Columns with >40% NaNs
-
-        # Only columns with NaNs count and percentage
+        # Drop Columns with >40% NaNs.
         columns = train_df.isnull().sum()[train_df.isnull().sum() != 0].keys()
         nans_count = train_df.isnull().sum()[train_df.isnull().sum() != 0].values
         nans_percentage = train_df.isnull().sum()[train_df.isnull().sum() != 0].values / train_df.shape[0]
@@ -79,16 +76,8 @@ def home_loan_credit_model(self):
         keep_cols.remove('TARGET')
         test_df = test_df[keep_cols]
 
-        # check the new datasets shapes
-        # print(train_df.shape)
-        # print(test_df.shape)
-
         # Drop XNA records from CODE_GENDER column
         train_df = train_df[train_df['CODE_GENDER'] != 'XNA']
-
-        # check
-        train_df['CODE_GENDER'].value_counts()
-        # print(train_df)
 
         # Drop the wrong value in AMT_INCOME_TOTAL column
         train_df = train_df[train_df['AMT_INCOME_TOTAL'] != 117000000.0]
@@ -97,21 +86,13 @@ def home_loan_credit_model(self):
         train_df['DAYS_EMPLOYED'] = train_df['DAYS_EMPLOYED'].apply(lambda x: np.nan if x == 365243 else x)
         test_df['DAYS_EMPLOYED'] = test_df['DAYS_EMPLOYED'].apply(lambda x: np.nan if x == 365243 else x)
 
-        # check
-        # print(train_df['DAYS_EMPLOYED'].max())
-        # print(test_df['DAYS_EMPLOYED'].max())
-
         # DAYS_LAST_PHONE_CHANGE column
         train_df['DAYS_LAST_PHONE_CHANGE'] = train_df['DAYS_LAST_PHONE_CHANGE'].apply(
             lambda x: np.nan if x == 0.0 else x)
         test_df['DAYS_LAST_PHONE_CHANGE'] = test_df['DAYS_LAST_PHONE_CHANGE'].apply(lambda x: np.nan if x == 0.0 else x)
 
-        # check
-        # print(train_df['DAYS_LAST_PHONE_CHANGE'].max())
-        # print(test_df['DAYS_LAST_PHONE_CHANGE'].max())
-
         # NaNs Imputation
-        # Catagorical Features Encoding : Instead of doing both label encoding for features with 2 unique categories and
+        # Categorical Features Encoding : Instead of doing both label encoding for features with 2 unique categories and
         # one hot encoding for the rest, we can do one hot encoding for all features with and drop the first outcome column, as:
         # it will do it for us in one step
         # decrease the no. of features to prevent increasing dimensions and prevent overfitting
@@ -161,6 +142,7 @@ def home_loan_credit_model(self):
             print('Training & Validation Confusion Metrices:')
             print('Training   confusion matrix:\n', confusion_matrix(y_train, train_pred))
             print('Validation confusion matrix:\n', confusion_matrix(y_val, test_pred))
+
 
         # return the train_df and test_df from their copies
         train_df = train_copy.copy()
@@ -230,7 +212,7 @@ def home_loan_credit_model(self):
 
         # As in our target major is 91% and minor is 9%, we can't use either oversampling only as the minor is very small or
         # downsampling only as we will lose alot of our data, so we will apply both oversample on minor class firstly, then downsample the major one.
-
+    
         # create oversampler, downsampler instants
         oversampler = SMOTE(sampling_strategy=0.25)  # minor/major = 1/4
         undersampler = RandomUnderSampler(sampling_strategy=0.75)  # minor/major = 3/4
@@ -239,7 +221,7 @@ def home_loan_credit_model(self):
         RandomForestClassifier
         """
         # create pipeline
-        print("RandomForestClassifier------------------------------------------------------------------------------------>")
+        print("RandomForestClassifier------------------------------------------------------------------------------->")
         rf = RandomForestClassifier(n_estimators=100, max_depth=25, random_state=42)
         steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
                  ('model', rf)]
@@ -251,47 +233,54 @@ def home_loan_credit_model(self):
         # evaluate
         evaluate_model(rf_pipeline)
 
+        # pickle dump model
+        # pickle.dump(rf_pipeline, open('hlcrm_random_forest.sav', 'wb'))
+
         """
         AdaBoostClassifier
         """
-        print("AdaBoostClassifier------------------------------------------------------------------------------------>")
+        # print("AdaBoostClassifier------------------------------------------------------------------------------------>")
         # create pipeline
-        adaboost = AdaBoostClassifier(n_estimators=200, random_state=42)
-        steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
-                 ('model', adaboost)]
-        ada_pipeline = Pipeline(steps=steps)
+        # adaboost = AdaBoostClassifier(n_estimators=200, random_state=42)
+        # steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
+        #          ('model', adaboost)]
+        # ada_pipeline = Pipeline(steps=steps)
 
         # train
-        ada_pipeline.fit(X_train, y_train)
+        # ada_pipeline.fit(X_train, y_train)
 
         # evaluate
-        evaluate_model(ada_pipeline)
+        # evaluate_model(ada_pipeline)
+
+        # pickle dump model
+        # pickle.dump(ada_pipeline, open('hlcrm_ada_boost.sav','wb'))
 
         """
         LGBMClassifier
         """
-        print("LGBMClassifier------------------------------------------------------------------------------------>")
+        # print("LGBMClassifier------------------------------------------------------------------------------------>")
         # create pipeline
-        lgbm = LGBMClassifier(n_estimators=500, num_leaves=36, random_state=42)
-        steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
-                 ('model', lgbm)]
-        lgbm_pipeline = Pipeline(steps=steps)
+        # lgbm = LGBMClassifier(n_estimators=500, num_leaves=36, random_state=42)
+        # steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
+        #          ('model', lgbm)]
+        # lgbm_pipeline = Pipeline(steps=steps)
 
         # train
-        lgbm_pipeline.fit(X_train, y_train)
+        # lgbm_pipeline.fit(X_train, y_train)
 
         # evaluate
-        evaluate_model(lgbm_pipeline)
+        # evaluate_model(lgbm_pipeline)
+
+        # pickle dump model
+        # pickle.dump(lgbm_pipeline, open('hlcrm_lgbm.sav','wb'))
 
         """
         Prediction
         """
 
         res = pd.DataFrame({'SK_ID_CURR': test_df.index,
-                            'TARGET': lgbm_pipeline.predict_proba(test_df)[:, 1]})
-        print(res)
-
-        return True
+                            'TARGET': rf_pipeline.predict_proba(test_df)[:, 1]})
+        return res
     except CeleryError as ce:
         print(ce)
         return False

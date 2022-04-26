@@ -1,6 +1,5 @@
 import uuid
 from rest_framework.generics import GenericAPIView
-
 from creditRiskModelling.creditRiskModels.creditModels import home_loan_credit_risk_model
 from rest_framework.response import Response
 from rest_framework import status
@@ -8,13 +7,7 @@ import pickle
 from django.conf import settings
 import os
 import pandas as pd
-import numpy as np
 import traceback
-import graphviz
-import matplotlib
-import matplotlib.pyplot as plt
-from sklearn import tree
-from sklearn.tree import export_graphviz
 
 
 class RunHomeLoanCreditRiskModel(GenericAPIView):
@@ -54,7 +47,7 @@ class RunHomeLoanCreditRiskModel(GenericAPIView):
             #            'RESULT': model.predict_proba(ndf)[:, 1][0]}
             #     return Response({'responseStatus': 'SUCCESS', 'data': res}, status=status.HTTP_200_OK)
             else:
-                return Response({'responseStatus': 'ERROR', 'data': 'Invalid model_type'}, status=status.HTTP_200_OK)
+                return Response({'responseStatus': 'ERROR', 'data': 'Invalid modelType'}, status=status.HTTP_200_OK)
         except Exception as e:
             traceback.print_exc()
             resp_object = {
