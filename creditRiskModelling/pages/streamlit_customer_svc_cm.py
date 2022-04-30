@@ -11,22 +11,33 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
+import seaborn as sns
 import os
-
-
-def feature_importances(coef, names):
-    imp = coef
-    imp, names = zip(*sorted(zip(imp, names)))
-    plt.barh(range(len(names)), imp, align='center')
-    plt.yticks(range(len(names)), names)
-    plt.show()
+from sklearn import metrics
 
 # ---------------------------------#
 # Model building
+
+
 def build_model(train_data, test_data, **kwargs):
     # CREATING A NEW COLUMN SOURCE UNDER BOTH TRAIN AND TEST DATA
     train_data["Source"] = "Train"
     test_data["Source"] = "Test"
+
+    # EDA
+    st.subheader('2. Data Exploration')
+
+    st.write("Loan Status wise data distribution")
+    plt.figure(figsize=(10, 5))
+    item = train_data['Loan_Status'].value_counts()[:50]
+    sns.barplot(item.values, item.index)
+    sns.despine(left=True, right=True)
+    st.pyplot(plt)
+
+    st.write("Loan Status wise data distribution against each variable")
+    plt.figure(figsize=(10, 20))
+    sns.pairplot(train_data, hue="Loan_Status", palette='bright')
+    st.pyplot(plt)
 
     # COMBINE BOTH TRAIN AND TEST AS FULL DATA
     data = pd.concat([train_data, test_data])
@@ -119,7 +130,7 @@ def build_model(train_data, test_data, **kwargs):
     Model1 = M1.fit(train_X, train_y)
     Pred1 = Model1.predict(test_X)
 
-    st.subheader('2. Model Performance')
+    st.subheader('3. Model Performance')
     conf1 = confusion_matrix(test_y, Pred1)
     accuracy = ((conf1[0][0] + conf1[1][1]) / test_y.shape[0]) * 100
     report1 = classification_report(test_y, Pred1, output_dict=True)
@@ -127,6 +138,11 @@ def build_model(train_data, test_data, **kwargs):
 
     st.write('Confusion matrix')
     st.write(conf1)
+    # sns.heatmap(conf1, annot=True, cmap="gray_r", linewidth=2, linecolor='w', fmt='.0f')
+    # plt.xlabel('Predicted Value')
+    # plt.ylabel('True Value')
+    # st.pyplot(plt)
+
     st.write('Accuracy')
     st.write(accuracy)
     st.write('Classification Report')
@@ -156,13 +172,57 @@ def build_model(train_data, test_data, **kwargs):
     mykernel_List.append(mykernel)
     accuracy_List.append(Temp_Accuracy)
 
+
     model_validation_df = pd.DataFrame({'Cost': mycost_List,
                                         'Gamma': mygamma_List,
                                         'Kernel': mykernel_List,
                                         'Accuracy': accuracy_List})
 
-    st.write('Model Validation')
+    st.write('**Model Validation**')
     st.write(model_validation_df)
+
+    st.write('**Classification accuracy**')
+    TP = Confusion_Mat[0, 0]
+    TN = Confusion_Mat[1, 1]
+    FP = Confusion_Mat[0, 1]
+    FN = Confusion_Mat[1, 0]
+    classification_accuracy = (TP + TN) / float(TP + TN + FP + FN)
+    st.write(classification_accuracy)
+
+    st.write('**Classification error**')
+    classification_error = (FP + FN) / float(TP + TN + FP + FN)
+    st.write(classification_error)
+
+    p, r, f, _ = metrics.precision_recall_fscore_support(test_y, Test_Pred, average='weighted', warn_for=tuple())
+    st.write('**Precision**')
+    st.write('Precision can be defined as the percentage of correctly predicted positive outcomes out of all the predicted positive outcomes.')
+    st.write(p)
+
+    st.write('**Recall**')
+    st.write('Recall can be defined as the percentage of correctly predicted positive outcomes out of all the actual positive outcomes.')
+    st.write(p)
+
+    st.write('**F1-Score**')
+    st.write('The F1 score can be interpreted as a harmonic mean of the precision and recall, where an F1 score reaches its best value at 1 and worst score at 0.')
+    st.write(f)
+
+    # from sklearn.feature_selection import SelectPercentile, f_classif
+    #
+    # svm_weights_selected = (Temp_Model.coef_ ** 2).sum(axis=0)
+    # svm_weights_selected /= svm_weights_selected.max()
+    # selector = SelectPercentile(f_classif, percentile=10)
+    # X_indices = np.arange(train_X.shape[-1])
+    # plt.bar(X_indices[selector.get_support()] - .05, svm_weights_selected,
+    #         width=.2, label='SVM weights after selection', color='b')
+    #
+    # plt.title("Comparing feature selection")
+    # plt.xlabel('Feature number')
+    # plt.yticks(())
+    # plt.axis('tight')
+    # plt.legend(loc='upper right')
+    # # plt.show()
+    # plt.savefig('imp.png')
+    # st.image('imp.png')
 
     # from sklearn.inspection import permutation_importance
     # import matplotlib.pyplot as plt
@@ -174,13 +234,11 @@ def build_model(train_data, test_data, **kwargs):
     # plt.barh(features[sorted_idx], perm_importance.importances_mean[sorted_idx])
     # plt.xlabel("Permutation Importance")
     #
-    # plt.savefig('imp.png')
-    # st.image('imp.png')
+
     #
     # feature_importances(Temp_Model.coef_, feature_names)
 
     # print(Temp_Model.get_booster().feature_names)
-
 
 
 def app():
@@ -199,29 +257,23 @@ def app():
     # Sidebar - Collects user input features into dataframe
     with st.sidebar.header('1. Upload your CSV data'):
         uploaded_file = st.sidebar.file_uploader("Upload your input CSV file", type=["csv"])
-    #     st.sidebar.markdown("""
-    # [Example CSV input file](https://raw.githubusercontent.com/dataprofessor/data/master/delaney_solubility_with_descriptors.csv)
-    # """)
-
-    # Sidebar - Specify parameter settings
-    # with st.sidebar.header('2. Set Parameters'):
-    #     split_size = st.sidebar.slider('Data split ratio (% for Training Set)', 10, 90, 80, 5)
-    #
 
     with st.sidebar.subheader('2. Learning Parameters'):
-        parameter_cost = st.sidebar.select_slider('Cost (penalty parameter of the error term. It controls the trade off between smooth decision boundary and classifying the training points correctly)', options=[1, 2])
-        parameter_gamma = st.sidebar.select_slider('Gamma (gamma is a parameter for non linear hyperplanes. The higher the gamma value it tries to exactly fit the training data set)', options=[0.01, 0.1])
-        parameter_kernel = st.sidebar.select_slider('Kernel (kernel parameters selects the type of hyperplane used to separate the data. )', options=['sigmoid', 'rbf'])
+        st.sidebar.write('REGULARIZATION PARAMETER :')
+        parameter_cost = st.sidebar.select_slider('tells the SVM optimization how much you want to avoid miss classifying . It controls the trade off between smooth decision boundary and classifying the training points correctly', options=[0.1, 1, 1.5, 2])
+        st.sidebar.write('GAMMA :')
+        parameter_gamma = st.sidebar.select_slider('defines how far the influence of a single training example reaches. The higher the gamma value it tries to exactly fit the training data set', options=[0.01, 0.1])
+        st.sidebar.write('KERNEL :')
+        parameter_kernel = st.sidebar.select_slider('parameter selects the type of hyperplane used to separate the data.', options=['sigmoid', 'rbf'])
 
-    # with st.sidebar.subheader('2.2. General Parameters'):
-    #     parameter_random_state = st.sidebar.slider('Seed number (random_state)', 0, 1000, 42, 1)
-    #     parameter_criterion = st.sidebar.select_slider('Performance measure (criterion)', options=['mse', 'mae'])
-    #     parameter_bootstrap = st.sidebar.select_slider('Bootstrap samples when building trees (bootstrap)', options=[True, False])
-    #     parameter_oob_score = st.sidebar.select_slider('Whether to use out-of-bag samples to estimate the R^2 on unseen data (oob_score)', options=[False, True])
-    #     parameter_n_jobs = st.sidebar.select_slider('Number of jobs to run in parallel (n_jobs)', options=[1, -1])
+    with st.sidebar.subheader('3. Test with data'):
+        uploaded_test_file = st.sidebar.file_uploader("Upload your test CSV file", type=["csv"])
+        st.sidebar.write('Test data values:')
+        st.sidebar.write("Loan_ID, Gender, Married, Dependents, Education, Self_Employed, ApplicantIncome, "
+                 "CoapplicantIncome, LoanAmount, Loan_Amount_Term, Credit_History, Property_Area, Loan_Status")
+
 
     # Main panel
-
     # Displays the dataset
     st.subheader('1. Dataset')
 
@@ -229,21 +281,33 @@ def app():
         train_data = pd.read_csv(uploaded_file)
         st.markdown('**1.1. Glimpse of dataset**')
         st.write(train_data)
-        build_model(train_data)
+
+        if uploaded_test_file is not None:
+            test_data = pd.read_csv("test_data.csv")
+        else:
+            os.chdir('/home/diksha/Projects/creditRiskModelling/creditRiskModelling/datasets/customer-segment-risk/')
+            test_data = pd.read_csv("test_data.csv")
+
+        build_model(train_data=train_data,
+                    test_data=test_data,
+                    mycost=parameter_cost,
+                    mygamma=parameter_gamma,
+                    mykernel=parameter_kernel
+                    )
     else:
         st.info('Awaiting for CSV file to be uploaded.')
         if st.button('Press to use Example Dataset'):
-            # Boston housing dataset
-            print(os.getcwd())
             os.chdir('/home/diksha/Projects/creditRiskModelling/creditRiskModelling/datasets/customer-segment-risk/')
-            # files = os.listdir(os.curdir)
-            # print(files)
 
             train_data = pd.read_csv("train_data.csv")
-            test_data = pd.read_csv("test_data.csv")
-
             st.markdown('Dataset Sample.')
             st.write(train_data.head(5))
+
+            if uploaded_test_file is not None:
+                test_data = pd.read_csv("test_data.csv")
+            else:
+                os.chdir('/home/diksha/Projects/creditRiskModelling/creditRiskModelling/datasets/customer-segment-risk/')
+                test_data = pd.read_csv("test_data.csv")
 
             build_model(train_data=train_data,
                         test_data=test_data,
