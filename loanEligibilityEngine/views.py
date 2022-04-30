@@ -1,16 +1,27 @@
-from django.shortcuts import render
 from rest_framework.generics import GenericAPIView
 from rest_framework import status
 from rest_framework.response import Response
 import traceback
-import numpy as np
-import json
-import os
-from django.conf import settings
-import pickle
-import pandas as pd
 from loanEligibilityEngine.serializers import LoanEligibilityRequestSerializer
-from loanEligibilityEngine.utils import customer_segment, default_probability
+from loanEligibilityEngine.utils import customer_segment, default_probability, build_scorecard
+
+"""
+Loan Eligibility Engine
+
+Credit risk measures the probabilities of borrowers fail to pay back the debt and thus default on their obligations.
+Credit risk modeling is widely adopted in banking industry for multiple applications:
+- underwriting
+- account management (e.g. extending line of credits)
+- credit allowance
+- risk management and capital planning
+- regulatory capital calculation
+
+
+There are two key components of credit risk measurement:
+1) probability of default (PD), usually defined as likelihood of default over a period of time
+2) loss given default (LGD), typically referred to as the amount that can not be recovered after the borrower defaults.
+The multiplication of these two components gives one the expected loss
+"""
 
 
 class loanEligibilityEngine(GenericAPIView):
@@ -40,11 +51,11 @@ class loanEligibilityEngine(GenericAPIView):
             # CHECKING CUSTOMER ELIGIBILITY
             customer_eligibility_check = customer_segment(data=request_params)
             scorecard_data.append(customer_eligibility_check)
-            print(scorecard_data)
+            # print(scorecard_data)
 
             # GENERATE PROBABILITY OF DEFAULT
-            # probability_of_default = default_probability(data=request_params)
-            # print(probability_of_default)
+            probability_of_default_check = default_probability(data=request_params)
+            scorecard_data.append(probability_of_default_check)
 
             # TODO : GENERATE LOAN ELIGIBILITY FLAG
 
@@ -54,15 +65,16 @@ class loanEligibilityEngine(GenericAPIView):
 
             # TODO : RULE BASED ENGINE
 
-            # TODO : CHECKS - SIGNALS
-
             # TODO : BUILD SCORECARD
+            build_scorecard(scorecard_data)
 
             resp_object = {
                 "responseStatus": 'SUCCESS',
                 "data": {
                     'customer_eligibility_flag': customer_eligibility_check.get('customer_eligibility_flag'),
-                    'loan_eligibility_flag': True,
+                    'probability_of_default_flag': probability_of_default_check.get('probability_of_default_flag'),
+                    'probability_of_default_score': probability_of_default_check.get('probability_of_default_score'),
+                    'loan_eligibility_flag': False,
                     'loan_eligibility_score': 0,
                     'customer_risk_score': 0
                 }

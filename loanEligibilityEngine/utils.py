@@ -42,51 +42,70 @@ def customer_segment(data):
         model_path = os.path.join(f"{settings.BASE_DIR}/creditRiskModels/customer_seg_svc.sav")
         model = pickle.load(open(model_path, 'rb'))
         prediction = model.predict(df)
-        print(prediction)
 
         if prediction[0] == 1:
             result['customer_eligibility_flag'] = True
         else:
             result['customer_eligibility_flag'] = False
         return result
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
-        print(e)
         return {
-            "flag": False,
+            "customer_eligibility_flag": False,
             "customer_eligibility_data": None
         }
 
 
+def get_prob_default(model, test_df):
+    output_predictions = model.predict_proba(test_df.iloc[:, :])
+    output_df = pd.DataFrame(output_predictions[:, :]).rename(columns={0: 'probability'})
+    prob = output_df['probability'].to_dict().get(0)
+    return prob
+
+
 def default_probability(data):
-    new_data = list()
-    op_fields = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'NumberOfTime30-59DaysPastDueNotWorse',
-                 'DebtRatio', 'MonthlyIncome', 'NumberOfOpenCreditLinesAndLoans', 'NumberOfTimes90DaysLate',
-                 'NumberRealEstateLoansOrLines', 'NumberOfTime60-89DaysPastDueNotWorse',
-                 'NumberOfDependents']
-    d = dict([(x, 0) for x in op_fields])
+    try:
+        new_data = list()
+        result = dict()
+        op_fields = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'NumberOfTime30-59DaysPastDueNotWorse',
+                     'DebtRatio', 'MonthlyIncome', 'NumberOfOpenCreditLinesAndLoans', 'NumberOfTimes90DaysLate',
+                     'NumberRealEstateLoansOrLines', 'NumberOfTime60-89DaysPastDueNotWorse',
+                     'NumberOfDependents']
+        d = dict([(x, 0) for x in op_fields])
 
-    d['age'] = calculate_age(data.get('date_of_birth'))
-    d['NumberOfDependents'] = data.get('dependents')
-    d['MonthlyIncome'] = data.get('annual_income') / 12
-    d['NumberOfOpenCreditLinesAndLoans'] = data.get('existing_loans_count')
-    d['NumberRealEstateLoansOrLines'] = 1 if data.get('existing_home_loan_flag') is True else 0
-    d['NumberRealEstateLoansOrLines'] = 1 if data.get('existing_home_loan_flag') is True else 0
+        d['age'] = calculate_age(data.get('date_of_birth'))
+        d['NumberOfDependents'] = data.get('dependents')
+        d['MonthlyIncome'] = data.get('annual_income') / 12
+        d['NumberOfOpenCreditLinesAndLoans'] = data.get('existing_loans_count')
+        d['NumberRealEstateLoansOrLines'] = 1 if data.get('existing_home_loan_flag') is True else 0
+        d['NumberRealEstateLoansOrLines'] = 1 if data.get('existing_home_loan_flag') is True else 0
 
-    new_data.append(d)
-    df = pd.DataFrame(new_data)
-    model_path = os.path.join(f"{settings.BASE_DIR}/creditRiskModels/default_probability_xgb.sav")
-    model = pickle.load(open(model_path, 'rb'))
-    prediction = model.predict(df)
+        result['customer_default_probability_data'] = d
 
-    # model2 = xgb.Booster()
-    # model2.load_model(model_path)
-    # prediction = model2.predict(df)
+        new_data.append(d)
+        df = pd.DataFrame(new_data)
+        model_path = os.path.join(f"{settings.BASE_DIR}/creditRiskModels/default_probability_xgb_3.pkl")
+        model = pickle.load(open(model_path, 'rb'))
 
-    return prediction
+        default_probability = round(get_prob_default(model, df), 2)
+
+        if default_probability < 0.65:
+            result['probability_of_default_flag'] = True
+            result['probability_of_default_score'] = default_probability
+        else:
+            result['probability_of_default_flag'] = False
+            result['probability_of_default_score'] = default_probability
+        return result
+    except Exception:
+        traceback.print_exc()
+        return {
+            "probability_of_default_flag": False,
+            "probability_of_default_score": 0,
+            "customer_default_probability_data": None,
+        }
 
 
-def scorecard_signals(scorecard_data):
+def build_scorecard(scorecard_data):
     try:
         data = {k: v for d in scorecard_data for k, v in d.items()}
         print(data)
@@ -148,3 +167,6 @@ def scorecard_signals(scorecard_data):
     except Exception:
         traceback.print_exc()
 
+
+def scorecard_signals():
+    pass

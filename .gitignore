@@ -150,3 +150,4 @@ GitHub.sublime-settings
 /creditRiskModels/hlcrm_random_forest.sav
 /creditRiskModels/customer_seg_svc.sav
 /creditRiskModels/default_probability_xgb.sav
+/creditRiskModels/default_probability_xgb_3.pkl

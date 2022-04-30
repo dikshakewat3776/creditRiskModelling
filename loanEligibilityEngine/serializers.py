@@ -1,9 +1,10 @@
 from rest_framework import serializers
 import datetime
+import re
 
 
 class LoanEligibilityRequestSerializer(serializers.Serializer):
-
+    pan = serializers.CharField(max_length=10, required=True, allow_null=False, allow_blank=False)
     gender = serializers.ChoiceField(required=True,  choices=['MALE', 'FEMALE'], allow_null=False, allow_blank=False)
     marital_status = serializers.ChoiceField(required=True, choices=['MARRIED', 'UNMARRIED'], allow_null=False,
                                              allow_blank=False)
@@ -25,6 +26,18 @@ class LoanEligibilityRequestSerializer(serializers.Serializer):
     existing_loans_count = serializers.IntegerField(required=True)
     existing_home_loan_flag = serializers.BooleanField(required=True)
     date_of_birth = serializers.CharField(max_length=20, allow_null=False, allow_blank=False)
+
+    def validate_pan(self, value):
+        if value:
+            try:
+                PAN_REGEX = "[A-Za-z]{5}\d{4}[A-Za-z]{1}"
+                pan_format = re.compile(PAN_REGEX)
+                if pan_format.match(value):
+                    return value
+                else:
+                    raise serializers.ValidationError("Invalid PAN Number entered.")
+            except ValueError:
+                raise serializers.ValidationError("Invalid PAN Number entered.")
 
     def validate_date_of_birth(self, value):
         if value:
