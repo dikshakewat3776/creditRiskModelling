@@ -10,7 +10,7 @@ from django.conf import settings
 import pickle
 import pandas as pd
 from loanEligibilityEngine.serializers import LoanEligibilityRequestSerializer
-from loanEligibilityEngine.utils import customer_segment
+from loanEligibilityEngine.utils import customer_segment, default_probability
 
 
 class loanEligibilityEngine(GenericAPIView):
@@ -34,19 +34,17 @@ class loanEligibilityEngine(GenericAPIView):
                         }
                 return Response(resp_object, status=status.HTTP_400_BAD_REQUEST)
 
-            """
-            CHECK 1 :
-            MIN QUALIFICATION CRITERIA/ QUALIFIER
-            
-            - Vintage Customer	
-            - Customer Residential
-            - Min Monthly Transactions
-            - Min Transacting products
 
-            """
+            scorecard_data = list()
 
             # CHECKING CUSTOMER ELIGIBILITY
-            customer_eligible_flag = customer_segment(data=request_params)
+            customer_eligibility_check = customer_segment(data=request_params)
+            scorecard_data.append(customer_eligibility_check)
+            print(scorecard_data)
+
+            # GENERATE PROBABILITY OF DEFAULT
+            # probability_of_default = default_probability(data=request_params)
+            # print(probability_of_default)
 
             # TODO : GENERATE LOAN ELIGIBILITY FLAG
 
@@ -58,10 +56,12 @@ class loanEligibilityEngine(GenericAPIView):
 
             # TODO : CHECKS - SIGNALS
 
+            # TODO : BUILD SCORECARD
+
             resp_object = {
                 "responseStatus": 'SUCCESS',
                 "data": {
-                    'customer_eligibility_flag': customer_eligible_flag,
+                    'customer_eligibility_flag': customer_eligibility_check.get('customer_eligibility_flag'),
                     'loan_eligibility_flag': True,
                     'loan_eligibility_score': 0,
                     'customer_risk_score': 0

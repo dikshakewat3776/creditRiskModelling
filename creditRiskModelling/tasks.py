@@ -4,34 +4,35 @@ import os
 from django.conf import settings
 import numpy as np
 import pandas as pd
-
-# for pre-processing
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer, make_column_selector
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import train_test_split
+from sklearn.compose import  make_column_selector
 from imblearn.pipeline import Pipeline
-from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RandomUnderSampler
-
-# for machine learning modelling
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from lightgbm import LGBMClassifier
-from sklearn.metrics import roc_auc_score, confusion_matrix
 import pickle
+import time
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import  PowerTransformer
+from sklearn.model_selection import train_test_split, KFold, cross_val_score, RandomizedSearchCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import roc_auc_score, confusion_matrix
+from imblearn.over_sampling import SMOTE
+from xgboost import XGBClassifier
+
 
 # for ignoring warnings
 import warnings
 warnings.filterwarnings("ignore")
 
 
-
-
 @app.task(bind=True)
 def home_loan_credit_model(self):
     """
-    Ref: https://www.kaggle.com/code/wssamhassan/home-credit-default-risk-wssam-hassan/notebook
     Impl: https://colab.research.google.com/drive/1632OS5AOg8rALyQCpktsAxIPa6onLwKY?usp=sharing
     """
     try:
@@ -239,40 +240,40 @@ def home_loan_credit_model(self):
         """
         AdaBoostClassifier
         """
-        # print("AdaBoostClassifier------------------------------------------------------------------------------------>")
+        print("AdaBoostClassifier------------------------------------------------------------------------------------>")
         # create pipeline
-        # adaboost = AdaBoostClassifier(n_estimators=200, random_state=42)
-        # steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
-        #          ('model', adaboost)]
-        # ada_pipeline = Pipeline(steps=steps)
+        adaboost = AdaBoostClassifier(n_estimators=200, random_state=42)
+        steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
+                 ('model', adaboost)]
+        ada_pipeline = Pipeline(steps=steps)
 
         # train
-        # ada_pipeline.fit(X_train, y_train)
+        ada_pipeline.fit(X_train, y_train)
 
         # evaluate
-        # evaluate_model(ada_pipeline)
+        evaluate_model(ada_pipeline)
 
         # pickle dump model
-        # pickle.dump(ada_pipeline, open('hlcrm_ada_boost.sav','wb'))
+        pickle.dump(ada_pipeline, open('hlcrm_ada_boost.sav','wb'))
 
         """
         LGBMClassifier
         """
-        # print("LGBMClassifier------------------------------------------------------------------------------------>")
+        print("LGBMClassifier------------------------------------------------------------------------------------>")
         # create pipeline
-        # lgbm = LGBMClassifier(n_estimators=500, num_leaves=36, random_state=42)
-        # steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
-        #          ('model', lgbm)]
-        # lgbm_pipeline = Pipeline(steps=steps)
+        lgbm = LGBMClassifier(n_estimators=500, num_leaves=36, random_state=42)
+        steps = [('preprocessor', preprocessor), ('oversampler', oversampler), ('undersampler', undersampler),
+                 ('model', lgbm)]
+        lgbm_pipeline = Pipeline(steps=steps)
 
         # train
-        # lgbm_pipeline.fit(X_train, y_train)
+        lgbm_pipeline.fit(X_train, y_train)
 
         # evaluate
-        # evaluate_model(lgbm_pipeline)
+        evaluate_model(lgbm_pipeline)
 
         # pickle dump model
-        # pickle.dump(lgbm_pipeline, open('hlcrm_lgbm.sav','wb'))
+        pickle.dump(lgbm_pipeline, open('hlcrm_lgbm.sav','wb'))
 
         """
         Prediction
@@ -284,3 +285,156 @@ def home_loan_credit_model(self):
     except CeleryError as ce:
         print(ce)
         return False
+
+
+@app.task(bind=True)
+def probability_of_default_credit_model(self):
+    """
+    Impl: https://colab.research.google.com/drive/1WmE0mjAU8obAMppL1GWTjpCxU7C0DrkI?usp=sharing
+          https://www.kaggle.com/code/dikshak123/give-me-some-credit-fp/edit
+    """
+    try:
+        dirname = os.path.join(f"{settings.BASE_DIR}/creditRiskModelling/datasets/customer-default-probability")
+
+        # training dataset
+        train_df = pd.read_csv(f"{dirname}/cs-training.csv")
+
+        # testing dataset
+        test_df = pd.read_csv(f"{dirname}/cs-test.csv")
+
+        target_variable = "SeriousDlqin2yrs"
+
+        desc1 = train_df.describe(percentiles=[.25, .5, .75, .9, .95, .99, .999])
+        print(desc1)
+
+        # handle NA values
+        features_with_na = train_df.isna().sum()[train_df.isna().sum() > 0]
+        print(features_with_na.sort_values(ascending=False))
+
+        (train_df.isna().sum(axis=1)[train_df.isna().sum(axis=1) > 0]
+         .reset_index().rename(columns={0: 'number_of_na'})
+         .groupby('number_of_na')
+         .count().rename(columns={'index': 'number_of_observations'}))
+
+        # Detecting outliers
+        # Many of the financial features have outliers (extreme outliers = > 3* interquartile range), with a right-tail skew.
+        # Hence, we should either use models that are robust to outliers (e.g. tree-based models), or transform the features accordingly (e.g. Box-Cox transformation).
+
+        def get_outlier_counts(df, outlier_threshold=1.5):
+            Q1 = df.quantile(0.25)
+            Q3 = df.quantile(0.75)
+            IQR = Q3 - Q1
+
+            outlier_counts = ((df < (Q1 - outlier_threshold * IQR)) | (df > (Q3 + outlier_threshold * IQR))).sum()
+            return outlier_counts[outlier_counts > 0].sort_values(ascending=False)
+
+        cnts = get_outlier_counts(train_df, outlier_threshold=3)
+        print(cnts)
+
+        desc2 = train_df.describe(percentiles=[.25,.5,.75,.9,.95,.99,.999])
+        print(desc2)
+
+        # Handling duplicates
+        (train_df.groupby(train_df.columns.tolist(), as_index=False)
+         .size()['size'].value_counts())
+
+        # Train test split
+        X, y = train_df.iloc[:, 1:], train_df.loc[:, target_variable]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+        # Data Preprocessing
+        # Based on EDA, we have found the need for imputation and scaling. Hence, we assemble a pipeline of imputation (median) and scaling (Box-Cox via PowerTransformer),
+        # testing out different classifiers to compare model performance.
+        # Based on experimentation, model performance when training with SMOTE for synthetic oversampling of the minority class did not significantly improve performance.
+
+        def get_pipeline(classifier, random_seed=42):
+            """Takes in a classifier, returns the entire data preprocessing pipeline (imblearn pipeline)"""
+            return Pipeline([
+                ('imputer', SimpleImputer(strategy='median')),
+                # SMOTE(sampling_strategy='minority', random_state=random_seed), -> removed due to poor performance
+                ('scaler', PowerTransformer()),
+                ('clf', classifier)
+            ])
+
+        # We train several baseline models using different learning algorithms to get a sense of what learning algorithm best performs during k-fold cross validation.
+        # In the interest of time, we perform model selection with minimal hyperparameter tuning,
+        #  and select the model with best performance on cross-validation score. Ideally,this selection process happens after hyperparameter tuning for all of the models.
+
+        def train_models(classifiers, num_folds=3, random_seed=42):
+            # models = dict()
+            results = dict()
+            for classifier in classifiers:
+                curr_time = time.time()
+                model = get_pipeline(classifier, random_seed=random_seed)
+                kfold = KFold(n_splits=num_folds)
+                print(f'Training {classifier.__class__.__name__}')
+                score = cross_val_score(model, X_train, y_train, cv=kfold, scoring='roc_auc')
+                print("%0.2f AUC with a standard deviation of %0.2f" % (score.mean(), score.std()))
+                # models[classifier.__class__.__name__] = model
+                results[classifier.__class__.__name__] = score
+                print(f'Training took {round(time.time() - curr_time)} seconds')
+            print('Training complete')
+            return results
+
+        classifiers = [
+            GaussianNB(),
+            KNeighborsClassifier(5),
+            LogisticRegression(),
+            RandomForestClassifier(),
+            XGBClassifier(),
+        ]
+        results = train_models(classifiers)
+        print(results)
+
+        # Based on the baseline model performances,
+        # XGBoost algorithm performed the best (highest AUC with lowest standard deviation across 3 folds).
+        #  To improve performance, we tune the model hyperparameters using randomized search, which does random search over the range of hyperparameters.
+        #   This is faster than grid search, which exhaustively searches over all possible hyperparameters in the range provided.
+
+        model = get_pipeline(XGBClassifier(n_jobs=-1))
+
+        xgb_hyperparams = {
+            'clf__max_depth': np.arange(4, 10, 1),
+            'clf__learning_rate': [0.01, 0.1, 0.2, 0.3],
+            'clf__n_estimators': np.arange(400, 1000, 100),
+            'clf__subsample': np.arange(0.5, 1, 0.1),
+            'clf__scale_pos_weight': [10, 15, 20]  # Imbalanced ratio of 94:6, hence add weight to negative class
+
+        }
+
+        clf = RandomizedSearchCV(estimator=model,
+                                 param_distributions=xgb_hyperparams,
+                                 scoring='roc_auc',
+                                 n_iter=20,
+                                 verbose=2)
+
+        clf.fit(X_train, y_train)
+
+        print("Best parameters:", clf.best_params_)
+        print("Best score: ", clf.best_score_)
+
+        model = get_pipeline(XGBClassifier(max_depth=4,
+                                           learning_rate=0.01,
+                                           n_estimators=800,
+                                           subsample=0.5,
+                                           scale_pos_weight=20,
+                                           n_jobs=-1))
+
+        model.fit(X_train, y_train)
+
+        pickle.dump(model, open('default_probability_xgb.sav', 'wb'))
+
+        def get_output(model, test_df):
+            output_predictions = model.predict_proba(test_df.iloc[:, 2:])
+            output_df = pd.DataFrame(output_predictions[:, 1]).rename(columns={0: 'probability'})
+            output_df['id'] = range(1, len(output_df) + 1)
+            output_df = output_df.loc[:, ['id', 'probability']]
+            return output_df
+
+        output_df = get_output(model, test_df)
+        return output_df
+    except CeleryError as ce:
+        print(ce)
+        return False
+
+
