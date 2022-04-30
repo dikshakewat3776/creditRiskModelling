@@ -49,8 +49,8 @@ app = MultiPage()
 st.title("Credit Risk Modelling")
 
 # Add all your applications (pages) here
-app.add_page("Upload Data", data_upload_page.app)
-app.add_page("Random Forest Regressor", streamlit_sample_web_app.app)
+# app.add_page("Upload Data", data_upload_page.app)
+# app.add_page("Random Forest Regressor", streamlit_sample_web_app.app)
 app.add_page("Customer Segmentation Credit Model", streamlit_customer_svc_cm.app)
 
 

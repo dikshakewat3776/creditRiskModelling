@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from sklearn import metrics
+import pickle
 
 # ---------------------------------#
 # Model building
@@ -127,7 +128,20 @@ def build_model(train_data, test_data, **kwargs):
 
     # SVM MODEL
     M1 = SVC()
+    print(train_X)
+    print((train_X).to_dict(orient='records'))
+    # print(train_y)
     Model1 = M1.fit(train_X, train_y)
+
+    # PICKLE DUMP MODEL
+    # pickle.dump(Model1, open('customer_seg_svc.sav', 'wb'))
+    # print("pickle dumped")
+
+    # print(test_X)
+    # print(type(test_X))
+    # data = test_X.to_dict(orient='records')
+    # print(data)
+
     Pred1 = Model1.predict(test_X)
 
     st.subheader('3. Model Performance')

@@ -1,6 +1,6 @@
 import uuid
 from rest_framework.generics import GenericAPIView
-from creditRiskModelling.creditRiskModels.creditModels import home_loan_credit_risk_model
+from creditRiskModels.creditModels import home_loan_credit_risk_model
 from rest_framework.response import Response
 from rest_framework import status
 import pickle
