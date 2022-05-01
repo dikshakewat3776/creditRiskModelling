@@ -5,10 +5,8 @@ through an object oriented framework.
 
 # Import necessary libraries
 import streamlit as st
-import data_upload_page
-import streamlit_sample_web_app
 import streamlit_customer_svc_cm
-
+import streamlit_loan_eligibility
 
 # Define the multipage class to manage the multiple apps in our program
 class MultiPage:
@@ -52,6 +50,7 @@ st.title("Credit Risk Modelling")
 # app.add_page("Upload Data", data_upload_page.app)
 # app.add_page("Random Forest Regressor", streamlit_sample_web_app.app)
 app.add_page("Customer Segmentation Credit Model", streamlit_customer_svc_cm.app)
+app.add_page("Credit Engine Model", streamlit_loan_eligibility.app)
 
 
 # Run the Web app
