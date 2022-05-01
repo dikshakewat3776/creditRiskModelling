@@ -80,6 +80,7 @@ class loanEligibilityEngine(GenericAPIView):
                     'probability_of_default_score_v1': probability_of_default_check_v1.get('probability_of_default_score_v1'),
                     'probability_of_default_flag_v2': probability_of_default_check_v2.get('probability_of_default_flag_v2'),
                     'probability_of_default_score_v2': probability_of_default_check_v2.get('probability_of_default_score_v2'),
+                    'credit_fico_score': probability_of_default_check_v2.get('credit_fico_score'),
                     'loan_eligibility_flag': False,
                     'loan_eligibility_score': 0,
                     'customer_risk_score': 0

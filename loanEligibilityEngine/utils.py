@@ -64,6 +64,10 @@ def get_prob_default(model, test_df):
 
 
 def default_probability_risk_v1(data):
+    """
+    Probability of Default (PD) tells us the likelihood that a borrower will default on the debt (loan or credit card).
+    In simple words, it returns the expected probability of customers fail to repay the loan.
+    """
     try:
         new_data = list()
         result = dict()
@@ -105,7 +109,31 @@ def default_probability_risk_v1(data):
         }
 
 
+def compute_credit_fico_score(input_df):
+    try:
+        scorecard_path = os.path.join(f"{settings.BASE_DIR}/creditRiskModelling/datasets/lending-club/df_scorecard.csv")
+        df_scorecard = pd.read_csv(scorecard_path)
+        inp = input_df.to_dict(orient='records')
+        scorecard_scores = list()
+
+        for k, v in inp[0].items():
+            if v == 1:
+                scores = df_scorecard[df_scorecard['Feature name'] == k]['Score - Final'].to_dict()
+                if scores:
+                    for key in scores.keys():
+                        scorecard_scores.append(scores[key])
+        credit_score = sum(scorecard_scores)
+        return credit_score
+    except Exception:
+        traceback.print_exc()
+        return 0
+
+
 def default_probability_risk_v2(data):
+    """
+    Probability of Default (PD) tells us the likelihood that a borrower will default on the debt (loan or credit card).
+    In simple words, it returns the expected probability of customers fail to repay the loan.
+    """
     try:
         new_data = list()
         result = dict()
@@ -186,11 +214,15 @@ def default_probability_risk_v2(data):
 
         default_probability = round(model.predict_proba(df)[:][:, 1][0], 2)
 
+        credit_fico_score = compute_credit_fico_score(df)
+
         if default_probability > 0.65:
             result['probability_of_default_flag_v2'] = True
+            result['credit_fico_score'] = credit_fico_score
             result['probability_of_default_score_v2'] = default_probability
         else:
             result['probability_of_default_flag_v2'] = False
+            result['credit_fico_score'] = credit_fico_score
             result['probability_of_default_score_v2'] = default_probability
         return result
     except Exception:
@@ -198,8 +230,23 @@ def default_probability_risk_v2(data):
         return {
             "probability_of_default_flag_v2": False,
             "probability_of_default_score_v2": 0,
+            "credit_fico_score": 0,
             "customer_default_probability_data_v2": {}
         }
+
+
+def loss_given_default():
+    """
+    Loss Given Default (LGD) is a proportion of the total exposure when borrower defaults. It is calculated by (1 - Recovery Rate).
+    """
+    pass
+
+
+def exposure_at_default():
+    """
+    Exposure at Default (EAD) is the amount that the borrower has to pay the bank at the time of default.
+    """
+    pass
 
 
 def build_scorecard(scorecard_data):
