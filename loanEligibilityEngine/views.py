@@ -3,7 +3,8 @@ from rest_framework import status
 from rest_framework.response import Response
 import traceback
 from loanEligibilityEngine.serializers import LoanEligibilityRequestSerializer
-from loanEligibilityEngine.utils import customer_segment, default_probability, build_scorecard
+from loanEligibilityEngine.utils import customer_segment, default_probability_risk_v1, \
+    default_probability_risk_v2, build_scorecard
 
 """
 Loan Eligibility Engine
@@ -54,8 +55,11 @@ class loanEligibilityEngine(GenericAPIView):
             # print(scorecard_data)
 
             # GENERATE PROBABILITY OF DEFAULT
-            probability_of_default_check = default_probability(data=request_params)
-            scorecard_data.append(probability_of_default_check)
+            probability_of_default_check_v1 = default_probability_risk_v1(data=request_params)
+            scorecard_data.append(probability_of_default_check_v1)
+
+            probability_of_default_check_v2 = default_probability_risk_v2(data=request_params)
+            scorecard_data.append(probability_of_default_check_v2)
 
             # TODO : GENERATE LOAN ELIGIBILITY FLAG
 
@@ -66,14 +70,16 @@ class loanEligibilityEngine(GenericAPIView):
             # TODO : RULE BASED ENGINE
 
             # TODO : BUILD SCORECARD
-            build_scorecard(scorecard_data)
+            # build_scorecard(scorecard_data)
 
             resp_object = {
                 "responseStatus": 'SUCCESS',
                 "data": {
                     'customer_eligibility_flag': customer_eligibility_check.get('customer_eligibility_flag'),
-                    'probability_of_default_flag': probability_of_default_check.get('probability_of_default_flag'),
-                    'probability_of_default_score': probability_of_default_check.get('probability_of_default_score'),
+                    'probability_of_default_flag_v1': probability_of_default_check_v1.get('probability_of_default_flag_v1'),
+                    'probability_of_default_score_v1': probability_of_default_check_v1.get('probability_of_default_score_v1'),
+                    'probability_of_default_flag_v2': probability_of_default_check_v2.get('probability_of_default_flag_v2'),
+                    'probability_of_default_score_v2': probability_of_default_check_v2.get('probability_of_default_score_v2'),
                     'loan_eligibility_flag': False,
                     'loan_eligibility_score': 0,
                     'customer_risk_score': 0

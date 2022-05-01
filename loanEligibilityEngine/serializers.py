@@ -26,6 +26,15 @@ class LoanEligibilityRequestSerializer(serializers.Serializer):
     existing_loans_count = serializers.IntegerField(required=True)
     existing_home_loan_flag = serializers.BooleanField(required=True)
     date_of_birth = serializers.CharField(max_length=20, allow_null=False, allow_blank=False)
+    grade = serializers.ChoiceField(required=True, choices=['A', 'B', 'C', 'D', 'E', 'F'], allow_null=False,
+                                    allow_blank=False)
+    home_ownership = serializers.ChoiceField(required=True, choices=['OWN', 'MORTGAGE', 'RENT', 'OTHER'],
+                                             allow_null=False, allow_blank=False)
+    loan_purpose = serializers.ChoiceField(required=True, choices=['CREDIT CARD', 'DEBT', 'PURCHASE', 'OTHER'],
+                                           allow_null=False, allow_blank=False)
+    employment_length = serializers.IntegerField(required=True)
+    interest_rate = serializers.FloatField(required=True, min_value=6.0, max_value=21.5)
+    months_since_last_delinquency = serializers.IntegerField(required=True, min_value=0, max_value=60)
 
     def validate_pan(self, value):
         if value:
