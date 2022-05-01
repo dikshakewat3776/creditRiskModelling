@@ -76,7 +76,7 @@ class loanEligibilityEngine(GenericAPIView):
             expected_loss_v1 = round(probability_of_default_check_v1.get('probability_of_default_flag_v1') * lgd_compute.get('lgd'), 2)
             expected_loss_v2 = round(probability_of_default_check_v2.get('probability_of_default_flag_v2') * lgd_compute.get('lgd'), 2)
 
-            if expected_loss_v1 or expected_loss_v2 > 0.5:
+            if (expected_loss_v1 > 0.5) or (expected_loss_v2 > 0.5):
                 loan_eligibility_flag = True
             else:
                 loan_eligibility_flag = False
