@@ -15,10 +15,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from creditRiskModelling.views import RunHomeLoanCreditRiskModel
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('HLCreditModel/', RunHomeLoanCreditRiskModel.as_view()),
     path('loanEligibilityEngine/', include('loanEligibilityEngine.urls')),
 ]
