@@ -23,11 +23,121 @@ from sklearn.pipeline import Pipeline
 from sklearn.metrics import roc_auc_score, confusion_matrix
 from imblearn.over_sampling import SMOTE
 from xgboost import XGBClassifier
+import traceback
 
 
 # for ignoring warnings
 import warnings
 warnings.filterwarnings("ignore")
+
+
+@app.task(bind=True)
+def rule_engine(scorecard_data):
+    try:
+        # TODO: BUILD RULE ENGINE - based on various credit parameters flowing via bureau/ bank statements/cohorts, etc.
+        data = {k: v for d in scorecard_data for k, v in d.items()}
+        print(data)
+
+        # TODO: RULE ENGINE BASED CHECKS
+        """
+        CHECK 1 : MIN QUALIFICATION CRITERIA/ QUALIFIER
+
+        - Vintage Customer	
+        - Customer Demographics - Marital Status, Residential, Credit History, Family
+        - Min Transacting products
+        - Customer Employment
+        - Customer Resident
+        - Mobile
+
+        """
+        min_qualification_criteria = dict()
+        min_qualification_criteria['vintage_customer_check_flag'] = False
+        min_qualification_criteria['customer_demographics_check_flag'] = False
+        min_qualification_criteria['min_transacting_trade_lines_flag'] = False
+        min_qualification_criteria['customer_employment_check_flag'] = False
+        min_qualification_criteria['customer_mobile_check_flag'] = False
+        min_qualification_criteria['overall_min_qualification_check_success'] = False
+
+
+        # TODO : MIN QUALIFICATION CRITERIA/ QUALIFIER SIGNAL
+
+        """
+        CHECK 2 : BEHAVIOURAL ELIMINATION	
+
+        - Behaviour on MATM 
+        - Cash withdrawal to Balance enquiry ratio
+        - Debt ratio
+        - Delinquency identifiers - Open credit lines, real estate trade lines
+        """
+        behavioural_elimination_criteria = dict()
+        behavioural_elimination_criteria['monthly_matm_transactions_flag'] = False
+        behavioural_elimination_criteria['monthly_cash_withdrawal_flag'] = False
+        behavioural_elimination_criteria['debt_flag'] = False
+        behavioural_elimination_criteria['delinquency_flag'] = False
+        behavioural_elimination_criteria['existing_loans_flag'] = False
+        behavioural_elimination_criteria['existing_trade_lines_flag'] = False
+        behavioural_elimination_criteria['overall_behavioural_check_success'] = False
+
+        # TODO : BEHAVIOURAL ELIMINATION SIGNAL
+
+        """
+        CHECK 3: INTENT ELIMINATION	
+
+        - Transaction location
+        - Overdue, wilful defaulter
+        - Fraudulent transactions, lawsuits
+        - Balance Enquiries
+        """
+        intent_elimination_criteria = dict()
+        intent_elimination_criteria['transaction_location_check_flag'] = False
+        intent_elimination_criteria['fraudulent_transactions_flag'] = False
+        intent_elimination_criteria['wilful_defaulter_flag'] = False
+        intent_elimination_criteria['lawsuits_flag'] = False
+        intent_elimination_criteria['balance_enquiries_exceeds'] = False
+        intent_elimination_criteria['overall_intent_elimination_success'] = False
+
+        # TODO : INTENT ELIMINATION	 SIGNAL
+
+        """
+        CHECK 4: LOCATION BASED ELIMINATION	
+
+        - Most prominent location
+        - Negative district list
+        - Negative pincode list
+        """
+        location_elimination_criteria = dict()
+        location_elimination_criteria['pincode_check_flag'] = False
+        location_elimination_criteria['city_check_flag'] = False
+        location_elimination_criteria['address_check_flag'] = False
+        location_elimination_criteria['overall_location_elimination_success'] = False
+
+        # TODO : LOCATION BASED ELIMINATION SIGNAL
+
+        """
+        CHECK 5: BUREAU ELIMINATION
+        - Loan enquiries
+        - Current Loans
+        - Overdue
+        - Outstanding
+        - Bureau score
+        - credit score
+        """
+
+        bureau_elimination_criteria = dict()
+        bureau_elimination_criteria['current_loans_exceeds_flag'] = False
+        bureau_elimination_criteria['current_overdue_exceeds_flag'] = False
+        bureau_elimination_criteria['current_outstanding_exceeds_flag'] = False
+        bureau_elimination_criteria['current_balance_check_flag'] = False
+        bureau_elimination_criteria['bureau_score_check_flag'] = False
+        bureau_elimination_criteria['credit_score_check_flag'] = False
+        bureau_elimination_criteria['overall_bureau_elimination_success'] = False
+
+        # TODO : BUREAU ELIMINATION SIGNAL
+        return True
+    except CeleryError as ce:
+        print(ce)
+        return False
+
 
 
 @app.task(bind=True)

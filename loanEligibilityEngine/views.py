@@ -4,7 +4,7 @@ from rest_framework.response import Response
 import traceback
 from loanEligibilityEngine.serializers import LoanEligibilityRequestSerializer
 from loanEligibilityEngine.utils import customer_segment, default_probability_risk_v1, \
-    default_probability_risk_v2, build_scorecard
+    default_probability_risk_v2, loss_given_default, exposure_at_default
 
 """
 Loan Eligibility Engine
@@ -62,16 +62,20 @@ class loanEligibilityEngine(GenericAPIView):
             probability_of_default_check_v2 = default_probability_risk_v2(data=request_params)
             scorecard_data.append(probability_of_default_check_v2)
 
-            # TODO : GENERATE LOAN ELIGIBILITY FLAG
+            # GENERATE LOSS GIVEN DEFAULT
+            lgd_compute = loss_given_default(data=request_params)
 
-            # TODO : GENERATE LOAN ELIGIBILITY SCORE
+            # GENERATE EXPOSURE AT DEFAULT
+            ead_compute = exposure_at_default(data=request_params)
 
-            # TODO : GENERATE RISK SCORE
+            # GENERATE EXPECTED LOSS
+            expected_loss_v1 = round(probability_of_default_check_v1.get('probability_of_default_flag_v1') * lgd_compute.get('lgd'), 2)
+            expected_loss_v2 = round(probability_of_default_check_v2.get('probability_of_default_flag_v2') * lgd_compute.get('lgd'), 2)
 
-            # TODO : RULE BASED ENGINE
-
-            # TODO : BUILD SCORECARD
-            # build_scorecard(scorecard_data)
+            if expected_loss_v1 or expected_loss_v2 > 0.5:
+                loan_eligibility_flag = True
+            else:
+                loan_eligibility_flag = False
 
             resp_object = {
                 "responseStatus": 'SUCCESS',
@@ -81,12 +85,13 @@ class loanEligibilityEngine(GenericAPIView):
                     'probability_of_default_score_v1': probability_of_default_check_v1.get('probability_of_default_score_v1'),
                     'probability_of_default_flag_v2': probability_of_default_check_v2.get('probability_of_default_flag_v2'),
                     'probability_of_default_score_v2': probability_of_default_check_v2.get('probability_of_default_score_v2'),
-                    'ldg_probability': 0,
-                    'ead_probability': 0,
+                    'loss_given_default': lgd_compute.get('lgd'),
+                    'loss_given_default_recovery_rate': lgd_compute.get('recovery_rate'),
+                    'exposure_at_default': ead_compute,
+                    'expected_loss_v1': expected_loss_v1,
+                    'expected_loss_v2': expected_loss_v2,
                     'credit_score': probability_of_default_check_v2.get('credit_score'),
-                    'loan_eligibility_flag': False,
-                    'loan_eligibility_score': 0,
-                    'customer_risk_score': 0
+                    'loan_eligibility_flag': loan_eligibility_flag
                 }
             }
             return Response(resp_object, status=status.HTTP_200_OK)
