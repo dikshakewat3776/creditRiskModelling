@@ -21,6 +21,7 @@ Credit risk modeling is widely adopted in banking industry for multiple applicat
 There are two key components of credit risk measurement:
 1) probability of default (PD), usually defined as likelihood of default over a period of time
 2) loss given default (LGD), typically referred to as the amount that can not be recovered after the borrower defaults.
+3) exposure at default (EAD), is the amount that the borrower has to pay the bank at the time of default.
 The multiplication of these two components gives one the expected loss
 """
 
@@ -80,7 +81,7 @@ class loanEligibilityEngine(GenericAPIView):
                     'probability_of_default_score_v1': probability_of_default_check_v1.get('probability_of_default_score_v1'),
                     'probability_of_default_flag_v2': probability_of_default_check_v2.get('probability_of_default_flag_v2'),
                     'probability_of_default_score_v2': probability_of_default_check_v2.get('probability_of_default_score_v2'),
-                    'credit_fico_score': probability_of_default_check_v2.get('credit_fico_score'),
+                    'credit_score': probability_of_default_check_v2.get('credit_score'),
                     'loan_eligibility_flag': False,
                     'loan_eligibility_score': 0,
                     'customer_risk_score': 0

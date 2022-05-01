@@ -35,6 +35,10 @@ class LoanEligibilityRequestSerializer(serializers.Serializer):
     employment_length = serializers.IntegerField(required=True)
     interest_rate = serializers.FloatField(required=True, min_value=6.0, max_value=21.5)
     months_since_last_delinquency = serializers.IntegerField(required=True, min_value=0, max_value=60)
+    address = serializers.CharField(max_length=255, required=True, allow_null=False, allow_blank=False)
+    city = serializers.CharField(max_length=100, required=True, allow_null=False, allow_blank=False)
+    state = serializers.CharField(max_length=100, required=True, allow_null=False, allow_blank=False)
+    pincode = serializers.CharField(max_length=100, required=True, allow_null=False, allow_blank=False)
 
     def validate_pan(self, value):
         if value:
