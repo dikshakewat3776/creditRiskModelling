@@ -128,8 +128,8 @@ def build_model(train_data, test_data, **kwargs):
 
     # SVM MODEL
     M1 = SVC()
-    print(train_X)
-    print((train_X).to_dict(orient='records'))
+    # print(train_X)
+    # print((train_X).to_dict(orient='records'))
     # print(train_y)
     Model1 = M1.fit(train_X, train_y)
 

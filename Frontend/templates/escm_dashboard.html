@@ -8,7 +8,7 @@
         <a href="#"><div class="circle-tile-heading dark-blue"><i class="fa fa-users fa-fw fa-3x"></i></div></a>
         <div class="circle-tile-content dark-blue">
           <div class="circle-tile-description text-faded">Credit worthy Users</div>
-          <div class="circle-tile-number text-faded ">265</div>
+          <div class="circle-tile-number text-faded ">{{context.credit_worthy_count}}</div>
           <a class="circle-tile-footer" href="#">More Info<i class="fa fa-chevron-circle-right"></i></a>
         </div>
       </div>
@@ -18,8 +18,8 @@
       <div class="circle-tile ">
         <a href="#"><div class="circle-tile-heading red"><i class="fa fa-users fa-fw fa-3x"></i></div></a>
         <div class="circle-tile-content red">
-          <div class="circle-tile-description text-faded"> Over All Defaulted Users </div>
-          <div class="circle-tile-number text-faded ">15</div>
+          <div class="circle-tile-description text-faded"> Defaulted Users </div>
+          <div class="circle-tile-number text-faded ">{{context.defaulted_count}}</div>
           <a class="circle-tile-footer" href="#">More Info<i class="fa fa-chevron-circle-right"></i></a>
         </div>
       </div>
@@ -29,7 +29,7 @@
         <a href="#"><div class="circle-tile-heading orange"><i class="fa fa-users fa-fw fa-3x"></i></div></a>
         <div class="circle-tile-content orange">
           <div class="circle-tile-description text-faded"> Upcoming Defaulters </div>
-          <div class="circle-tile-number text-faded ">15</div>
+          <div class="circle-tile-number text-faded ">{{context.upcoming_defaults_count}}</div>
           <a class="circle-tile-footer" href="#">More Info<i class="fa fa-chevron-circle-right"></i></a>
         </div>
       </div>
@@ -41,7 +41,7 @@
         <a href="#"><div class="circle-tile-heading green"><i class="fa fa-users fa-fw fa-3x"></i></div></a>
         <div class="circle-tile-content green">
           <div class="circle-tile-description text-faded">Over All Total Users </div>
-          <div class="circle-tile-number text-faded ">300</div>
+          <div class="circle-tile-number text-faded ">{{context.overall_count}}</div>
           <a class="circle-tile-footer" href="#">More Info<i class="fa fa-chevron-circle-right"></i></a>
         </div>
       </div>
@@ -67,24 +67,14 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for i in context.table_data%}
                     <tr>
-                        <td>1</td>
-                        <td>ABCD123</td>
-                        <td>Diksha Kewat</td>
-                        <td>Credit Worthy</td>
+                        <td>{{i.id}}</td>
+                        <td>{{i.pan}}</td>
+                        <td>{{i.first_name}} {{i.last_name}}</td>
+                        <td>{{i.status}}</td>
                     </tr>
-                    <tr>
-                        <td>2</td>
-                        <td>TYUF4567</td>
-                        <td>Harsha Pawar</td>
-                        <td>Defaulted</td>
-                    </tr>
-                    <tr>
-                        <td>3</td>
-                        <td>KLZX6789</td>
-                        <td>Laxmi Sarki</td>
-                        <td>upcoming Deafult</td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
