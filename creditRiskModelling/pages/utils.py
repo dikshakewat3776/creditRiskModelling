@@ -51,6 +51,7 @@ STATE_MASTER_LIST = [
     {"state_code": "36", "state": "TELANGANA"}
 ]
 
+
 def calculate_age(birth_date):
     b_date = datetime.datetime.strptime(birth_date, "%d-%m-%Y")
     age = int((datetime.datetime.today() - b_date).days/365)
@@ -461,16 +462,10 @@ def home_loan_credit_risk_model(df):
     return df
 
 
-def rule_engine_signals():
-    pass
-
-
 def rule_engine(scorecard_data, type):
     try:
-        print(scorecard_data)
         # TODO: BUILD RULE ENGINE - based on various credit parameters flowing via bureau/ bank statements/cohorts, etc.
         data = {k: v for d in scorecard_data for k, v in d.items()}
-        print(data)
 
         # TODO: RULE ENGINE BASED CHECKS
         """
@@ -515,10 +510,11 @@ def rule_engine(scorecard_data, type):
             behavioural_elimination_criteria['delinquency_flag'] = False
             behavioural_elimination_criteria['existing_loans_flag'] = False
             behavioural_elimination_criteria['existing_trade_lines_flag'] = False
-            behavioural_elimination_criteria['overall_behavioural_check_success'] = False
+            behavioural_elimination_criteria['overall_behavioural_check_success'] = True
 
             if data.get('months_since_last_delinquency') >= 5:
                 behavioural_elimination_criteria['delinquency_flag'] = True
+                behavioural_elimination_criteria['overall_behavioural_check_success'] = False
 
             if data.get('existing_loan_flag') >= 1:
                 behavioural_elimination_criteria['existing_loans_flag'] = True
@@ -568,7 +564,6 @@ def rule_engine(scorecard_data, type):
 
             state_master_list = list(i['state'] for i in STATE_MASTER_LIST)
             if data.get('state').upper() in state_master_list:
-                print("here")
                 location_elimination_criteria['city_check_flag'] = True
                 location_elimination_criteria['state_check_flag'] = True
                 location_elimination_criteria['address_check_flag'] = True
@@ -596,13 +591,21 @@ def rule_engine(scorecard_data, type):
             bureau_elimination_criteria['credit_score_check_flag'] = False
             bureau_elimination_criteria['overall_bureau_elimination_success'] = False
 
-            if data.get('credit_score') > 500:
+            if data.get('credit_score') > 450:
                 bureau_elimination_criteria['overall_bureau_elimination_success'] = True
             return  bureau_elimination_criteria
         return True
     except Exception as e:
         print(e)
         return False, {}
+
+
+def test(pan):
+    data = {'FFRPK9830A': {"customer_eligibility_flag":True, "probability_of_default_flag_v1":False, "probability_of_default_score_v1":0.1, "probability_of_default_flag_v2":False, "probability_of_default_score_v2":0.3, "loss_given_default":0.2, "loss_given_default_recovery_rate":66, "exposure_at_default":0.3, "expected_loss_v1":0.36,"expected_loss_v2":0.02, "credit_score":468, "loan_eligibility_flag":True},
+           'FFRPK9830B': {"customer_eligibility_flag":True, "probability_of_default_flag_v1":False, "probability_of_default_score_v1":0.1, "probability_of_default_flag_v2":False, "probability_of_default_score_v2":0.3, "loss_given_default":0.667, "loss_given_default_recovery_rate":40, "exposure_at_default":0.7, "expected_loss_v1":0.76,"expected_loss_v2":0.02, "credit_score":218, "loan_eligibility_flag":True},
+           'FFRPK9830C': {"customer_eligibility_flag":True, "probability_of_default_flag_v1":False, "probability_of_default_score_v1":0.1, "probability_of_default_flag_v2":False, "probability_of_default_score_v2":0.3, "loss_given_default":0.2, "loss_given_default_recovery_rate":28, "exposure_at_default":0.3, "expected_loss_v1":0.36,"expected_loss_v2":0.02, "credit_score":468, "loan_eligibility_flag":True}}
+    res = data.get(pan) if data.get(pan) else {}
+    return res
 
 
 def get_overall_data():

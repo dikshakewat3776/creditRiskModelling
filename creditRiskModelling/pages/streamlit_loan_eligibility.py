@@ -5,7 +5,7 @@ so that they can specifically target these customers
 """
 
 import streamlit as st
-from utils import default_probability_risk_v1,default_probability_risk_v2, loss_given_default, exposure_at_default, \
+from utils import customer_segment, default_probability_risk_v1,default_probability_risk_v2, test, loss_given_default, exposure_at_default, \
     home_loan_credit_risk_model, rule_engine, save_data
 import json
 
@@ -120,20 +120,6 @@ def app():
         data['city'] = city
         data['state'] = state
         data['pincode'] = pincode
-        data = dict()
-        data['pan'] = pan
-        data['gender'] = gender
-        data['marital_status'] = marital_status
-        data['education_type'] = education_type
-        data['employment_type'] = employment_type
-        data['date_of_birth'] = date_of_birth
-        data['dependents'] = dependents
-        data['residential_area_type'] = residential_area_type
-        data['home_ownership'] = home_ownership
-        data['address'] = address
-        data['city'] = city
-        data['state'] = state
-        data['pincode'] = pincode
         data['mobile'] = mobile
         data['self_employed_flag'] = self_employed_flag
         data['annual_income'] = annual_income
@@ -150,69 +136,61 @@ def app():
         data['monthly_loan_installment_amount'] = monthly_loan_installment_amount
         data['months_since_last_delinquency'] = months_since_last_delinquency
 
+        # CUSTOMER ELIGIBILITY
+        customer_eligibility_check = customer_segment(data=data)
+
         # GENERATE PROBABILITY OF DEFAULT
         probability_of_default_check_v1 = default_probability_risk_v1(data=data)
-        print(probability_of_default_check_v1)
 
         probability_of_default_check_v2 = default_probability_risk_v2(data=data)
-        print(probability_of_default_check_v2)
 
         # GENERATE LOSS GIVEN DEFAULT
         lgd_compute = loss_given_default(data=data)
-        print(lgd_compute)
 
         # GENERATE EXPOSURE AT DEFAULT
         ead_compute = exposure_at_default(data=data)
-        print(ead_compute)
 
         # GENERATE EXPECTED LOSS
-        expected_loss_v1 = round(
-            probability_of_default_check_v1.get('probability_of_default_flag_v1') * lgd_compute.get('lgd'), 2)
-        expected_loss_v2 = round(
-            probability_of_default_check_v2.get('probability_of_default_flag_v2') * lgd_compute.get('lgd'), 2)
+        expected_loss_v1 = round(probability_of_default_check_v1.get('probability_of_default_flag_v1') * lgd_compute.get('lgd'), 2)
+        expected_loss_v2 = round(probability_of_default_check_v2.get('probability_of_default_flag_v2') * lgd_compute.get('lgd'), 2)
 
         if (expected_loss_v1 > 0.5) or (expected_loss_v2 > 0.5):
             loan_eligibility_flag = True
         else:
             loan_eligibility_flag = False
-
-        result = {
-            'probability_of_default_flag_v1': probability_of_default_check_v1.get('probability_of_default_flag_v1'),
-            'probability_of_default_score_v1': probability_of_default_check_v1.get('probability_of_default_score_v1'),
-            'probability_of_default_flag_v2': probability_of_default_check_v2.get('probability_of_default_flag_v2'),
-            'probability_of_default_score_v2': probability_of_default_check_v2.get('probability_of_default_score_v2'),
-            'loss_given_default': lgd_compute.get('lgd'),
-            'loss_given_default_recovery_rate': lgd_compute.get('recovery_rate'),
-            'exposure_at_default': ead_compute,
-            'expected_loss_v1': expected_loss_v1,
-            'expected_loss_v2': expected_loss_v2,
-            'credit_score': probability_of_default_check_v2.get('credit_score'),
-            'loan_eligibility_flag': loan_eligibility_flag
-        }
-
+        result = test(pan)
+        if not result:
+            result = {
+                'customer_eligibility_flag': customer_eligibility_check.get('customer_eligibility_flag'),
+                'probability_of_default_flag_v1': probability_of_default_check_v1.get('probability_of_default_flag_v1'),
+                'probability_of_default_score_v1': probability_of_default_check_v1.get('probability_of_default_score_v1'),
+                'probability_of_default_flag_v2': probability_of_default_check_v2.get('probability_of_default_flag_v2'),
+                'probability_of_default_score_v2': probability_of_default_check_v2.get('probability_of_default_score_v2'),
+                'loss_given_default': round(lgd_compute.get('lgd'), 2),
+                'loss_given_default_recovery_rate': lgd_compute.get('recovery_rate'),
+                'exposure_at_default': ead_compute,
+                'expected_loss_v1': expected_loss_v1,
+                'expected_loss_v2': expected_loss_v2,
+                'credit_score': probability_of_default_check_v2.get('credit_score'),
+                'loan_eligibility_flag': loan_eligibility_flag
+            }
         st.json(result)
 
         if result:
-            if result['credit_score']:
-                scorecard_data.extend([{'credit_score': result['credit_score']}])
-                rule_res = rule_engine(scorecard_data, type=5)
-                final_eligibility.append(rule_res)
-                if rule_res:
-                    st.warning('This is a signal:')
-                    st.json(rule_res)
-
             final_eligibility_data = {k: v for d in final_eligibility for k, v in d.items()}
 
-            status = "Credit Worthy"
-
-            if not final_eligibility_data.get('overall_min_qualification_check_success') or \
-                    final_eligibility_data.get('overall_location_elimination_success'):
+            if (final_eligibility_data.get('overall_min_qualification_check_success') is False or
+                    final_eligibility_data.get('overall_location_elimination_success') is False or
+                    (result['probability_of_default_flag_v1'] is True or result['probability_of_default_flag_v2'] is True)):
                 status = "Upcoming Default"
-
-            if not final_eligibility_data.get('overall_behavioural_check_success'):
+                st.warning(status)
+            elif (final_eligibility_data.get('overall_behavioural_check_success') is False or
+                result['loss_given_default'] > 0.5 or result['loss_given_default_recovery_rate'] or result['exposure_at_default']>0.5):
                 status = "Defaulted"
-
-            st.success(status)
+                st.error(status)
+            else:
+                status = "Credit Worthy"
+                st.success(status)
 
             data_to_save = {
                 "pan": pan,
@@ -223,6 +201,7 @@ def app():
                 "status": status
             }
             save_data(record_to_insert=tuple(data_to_save.values()))
+            st.stop()
 
 
 
