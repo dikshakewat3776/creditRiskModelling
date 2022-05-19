@@ -8,6 +8,8 @@ import datetime
 import xgboost as xgb
 import regex as re
 import psycopg2
+import json
+from sqlalchemy import create_engine
 
 
 STATE_MASTER_LIST = [
@@ -602,18 +604,43 @@ def rule_engine(scorecard_data, type):
         print(e)
         return False, {}
 
+
 def save_data(record_to_insert):
     try:
+
         connection = psycopg2.connect(user="postgres", password="postgres", host="127.0.0.1", port="5432", database="test")
         cursor = connection.cursor()
 
         postgres_insert_query = """ INSERT INTO escm (pan, first_name, last_name, input_data, result_data, status) VALUES (%s,%s,%s,%s,%s,%s)"""
-        cursor.execute(postgres_insert_query, json.dumps(record_to_insert))
+        cursor.execute(postgres_insert_query, record_to_insert)
         connection.commit()
         connection.close()
         print("Record inserted successfully!!!")
     except (Exception, psycopg2.Error) as error:
         print("Failed to insert record into the table!!!", error)
+
+
+def get_overall_data():
+    uri = "postgresql+psycopg2://postgres:postgres@localhost:5432/test"
+    engine = create_engine(uri, echo=False)
+    conn = engine.connect()
+    query = """ SELECT * FROM escm"""
+    df = pd.read_sql(query, con=conn)
+
+    overall_count = df.shape[0]
+    credit_worthy_count = len(df.loc[df['status'] == "Credit Worthy"])
+    defaulted_count = len(df.loc[df['status'] == "Upcoming Default"])
+    upcoming_defaults_count = len(df.loc[df['status'] == "Defaulted"])
+
+    data = {
+        "credit_worthy_count": credit_worthy_count,
+        "defaulted_count": defaulted_count,
+        "upcoming_defaults_count": upcoming_defaults_count,
+        "overall_count": overall_count,
+        "table_data": df.to_dict(orient="records")
+    }
+    print(data)
+    return data
 
 
 

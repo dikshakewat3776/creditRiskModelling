@@ -7,6 +7,7 @@ so that they can specifically target these customers
 import streamlit as st
 from utils import default_probability_risk_v1,default_probability_risk_v2, loss_given_default, exposure_at_default, \
     home_loan_credit_risk_model, rule_engine, save_data
+import json
 
 
 def app():
@@ -217,11 +218,11 @@ def app():
                 "pan": pan,
                 "first_name": first_name,
                 "last_name": last_name,
-                "input_data": data,
-                "result_data": result,
+                "input_data": json.dumps(data),
+                "result_data": json.dumps(result),
                 "status": status
             }
-            save_data(record_to_insert=data_to_save)
+            save_data(record_to_insert=tuple(data_to_save.values()))
 
 
 
