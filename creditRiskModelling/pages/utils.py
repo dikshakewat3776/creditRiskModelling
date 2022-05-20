@@ -627,7 +627,7 @@ def get_overall_data():
         "overall_count": overall_count,
         "table_data": df.to_dict(orient="records")
     }
-    with open("sample.json", "w") as outfile:
+    with open("/home/diksha/Projects/creditRiskModelling/Frontend/escm.json", "w") as outfile:
         outfile.write(json.dumps(data))
     return data
 
